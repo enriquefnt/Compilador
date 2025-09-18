@@ -81,8 +81,8 @@ def compress_pdf(input_path, output_path, compression_level="none"):
     else:
         base_path = os.path.dirname(os.path.abspath(__file__))
 
-    gs_executable = os.path.join(base_path,"DistribucionApp", "gs", "gs10.05.1", "bin", "gswin64c.exe")
-    # gs_executable = os.path.join(base_path, "gs", "gs10.05.1", "bin", "gswin64c.exe")
+    # gs_executable = os.path.join(base_path,"DistribucionApp", "gs", "gs10.05.1", "bin", "gswin64c.exe")
+    gs_executable = os.path.join(base_path, "gs", "gs10.05.1", "bin", "gswin64c.exe")
 
     print("Ruta a Ghostscript:", gs_executable)
     print("¿Existe Ghostscript en esa ruta?", os.path.exists(gs_executable))
