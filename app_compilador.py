@@ -397,7 +397,7 @@ root.title("Compilador de PDFs")
 root.geometry("600x150")
 root.resizable(False, False)
 
-lbl = tk.Label(root, text="Selecciona el directorio con archivos a compilar:")
+lbl = tk.Label(root, text="Selecciona la carpeta o los archivos a compilar:")
 lbl.pack(pady=10)
 
 frame = tk.Frame(root)
@@ -425,7 +425,7 @@ btn_browse_folder.pack(side=tk.LEFT, padx=5)
 btn_browse_files = tk.Button(frame, text="Seleccionar Archivos", command=select_files)
 btn_browse_files.pack(side=tk.LEFT, padx=5)
 
-btn_compile = tk.Button(root, text="Compilar PDFs", command=run_compilation, width=20)
+btn_compile = tk.Button(root, text="Compilar PDF", command=run_compilation, width=20)
 btn_compile.pack(pady=15)
 
 root.mainloop()
