@@ -1,3 +1,4 @@
+
 import sys
 import os
 import subprocess
@@ -425,7 +426,7 @@ def run_compilation():
 
 root = tk.Tk()
 root.title("Compilador de PDFs")
-root.geometry("600x130")  # Ajustado para espacio botón ayuda
+root.geometry("600x180")  # Ajustado para espacio botón ayuda
 root.resizable(False, False)
 
 # Etiqueta con instrucción
@@ -476,7 +477,7 @@ except Exception as e:
 btn_ayuda = tk.Button(root, image=icono_ayuda, command=abrir_ayuda)
 if icono_ayuda:
     btn_ayuda.image = icono_ayuda  # Evitar que la imagen sea recolectada por el garbage collector
-btn_ayuda.place(relx=1.0, rely=0.1, anchor="se", x=-10, y=+20)
+btn_ayuda.place(relx=1.0, rely=0.1, anchor="se", x=-10, y=+15)
 
 
 # Iniciar el loop principal de la interfaz gráfica
