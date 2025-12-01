@@ -1,7 +1,7 @@
 import sys
 import os
 import subprocess
-import time
+# import time
 import shutil
 import tempfile  # Para crear carpeta temporal estándar
 import tkinter as tk
@@ -12,6 +12,7 @@ from fpdf import FPDF
 from PyPDF2 import PdfMerger, PdfReader, PdfWriter
 from PyPDF2.errors import PdfReadError
 from pathlib import Path  # Para manejo seguro de rutas
+# import threading
 
 # Variables globales para modo y archivos seleccionados
 selected_mode = None
@@ -82,7 +83,8 @@ def compress_pdf(input_path, output_path, compression_level="none"):
         base_path = os.path.dirname(os.path.abspath(__file__))
 
     # Ruta al ejecutable de Ghostscript dentro de la carpeta gs
-    gs_executable = os.path.join(base_path, "gs", "gs10.05.1", "bin", "gswin64c.exe")
+    #gs_executable = os.path.join(base_path, "gs", "gs10.05.1", "bin", "gswin64c.exe")
+    gs_executable = os.path.join(base_path,"DistribucionApp", "gs", "gs10.05.1", "bin", "gswin64c.exe")
 
     print("Ruta a Ghostscript:", gs_executable)
     print("¿Existe Ghostscript en esa ruta?", os.path.exists(gs_executable))
@@ -107,7 +109,12 @@ def compress_pdf(input_path, output_path, compression_level="none"):
         input_path
     ]
     try:
-        subprocess.run(args, check=True)
+        # subprocess.run(args, check=True)
+         # Ocultar ventana de consola en Windows
+        creation_flags = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
+        print("Iniciando compresión...")  # Log para depuración
+        subprocess.run(args, check=True, creationflags=creation_flags)
+        print("Compresión finalizada.")  # Log para depuración
         if os.path.exists(output_path):
             print(f"Archivo comprimido creado: {output_path}, tamaño: {os.path.getsize(output_path)} bytes")
         else:
@@ -132,6 +139,7 @@ def compile_pdfs_in_directory(directory):
     """
     Compila y une PDFs a partir de todos los archivos en un directorio.
     Usa una carpeta temporal estándar para archivos intermedios.
+    Ahora procesa TODOS los tipos de archivos (no requiere PDFs válidos).
     """
     temp_dir = tempfile.mkdtemp(prefix="temp_pdfs_compilador_")
     print(f"Carpeta temporal creada para directorio: {temp_dir}")
@@ -146,30 +154,43 @@ def compile_pdfs_in_directory(directory):
         try:
             if ext == ".pdf":
                 temp_pdf = os.path.join(temp_dir, f"{name}_clean.pdf")
-                print(f"Limpiando PDF: {filepath} -> {temp_pdf}")
+                print(f"Procesando PDF: {filepath} -> {temp_pdf}")
                 if clean_pdf(filepath, temp_pdf):
                     merger.append(temp_pdf)
+                    print(f"PDF agregado al merger: {temp_pdf}")
                 else:
-                    print(f"Saltando PDF corrupto: {filepath}")
+                    print(f"PDF saltado (corrupto): {filepath}")
             elif ext in [".png", ".jpg", ".jpeg"]:
                 temp_pdf = os.path.join(temp_dir, f"{name}_temp.pdf")
-                print(f"Convirtiendo imagen a PDF: {filepath} -> {temp_pdf}")
-                image_to_pdf(filepath, temp_pdf)
-                merger.append(temp_pdf)
+                print(f"Procesando imagen: {filepath} -> {temp_pdf}")
+                try:
+                    image_to_pdf(filepath, temp_pdf)
+                    merger.append(temp_pdf)
+                    print(f"Imagen convertida y agregada: {temp_pdf}")
+                except Exception as e:
+                    print(f"Error convirtiendo imagen {filepath}: {e}. Saltando.")
             elif ext == ".txt":
                 temp_pdf = os.path.join(temp_dir, f"{name}_temp.pdf")
-                print(f"Convirtiendo txt a PDF: {filepath} -> {temp_pdf}")
-                txt_to_pdf(filepath, temp_pdf)
-                merger.append(temp_pdf)
+                print(f"Procesando texto: {filepath} -> {temp_pdf}")
+                try:
+                    txt_to_pdf(filepath, temp_pdf)
+                    merger.append(temp_pdf)
+                    print(f"Texto convertido y agregado: {temp_pdf}")
+                except Exception as e:
+                    print(f"Error convirtiendo texto {filepath}: {e}. Saltando.")
             elif ext == ".docx":
                 temp_pdf = os.path.join(temp_dir, f"{name}_temp.pdf")
-                print(f"Convirtiendo docx a PDF: {filepath} -> {temp_pdf}")
-                docx_to_pdf(filepath, temp_pdf)
-                merger.append(temp_pdf)
+                print(f"Procesando DOCX: {filepath} -> {temp_pdf}")
+                try:
+                    docx_to_pdf(filepath, temp_pdf)
+                    merger.append(temp_pdf)
+                    print(f"DOCX convertido y agregado: {temp_pdf}")
+                except Exception as e:
+                    print(f"Error convirtiendo DOCX {filepath}: {e}. Saltando.")
             else:
                 print(f"Extensión no soportada: {ext}, archivo: {filepath}")
         except Exception as e:
-            print(f"Error procesando {filepath}: {e}. Saltando este archivo.")
+            print(f"Error general procesando {filepath}: {e}. Saltando este archivo.")
 
     dir_name = os.path.basename(os.path.normpath(directory))
     output_pdf = os.path.join(directory, f"{dir_name}_UNIDO.pdf")
@@ -178,32 +199,14 @@ def compile_pdfs_in_directory(directory):
     if len(merger.pages) > 0:
         merger.write(output_pdf)
         merger.close()
+        print(f"PDF unido creado exitosamente con {len(merger.pages)} páginas.")
     else:
         merger.close()
         shutil.rmtree(temp_dir)
-        raise ValueError("No se encontraron archivos PDF válidos para compilar.")
+        raise ValueError("No se encontraron archivos válidos para compilar (PDF, imágenes, textos, DOCX). Verifique que los archivos sean soportados.")
 
     size_bytes = os.path.getsize(output_pdf)
     print(f"Tamaño archivo final: {size_bytes} bytes")
-
-    # Determinar nivel de compresión según tamaño
-    if size_bytes < 3 * 1024 * 1024:
-        compression_level = "none"
-    elif size_bytes < 8 * 1024 * 1024:
-        compression_level = "ebook"
-    else:
-        compression_level = "screen"
-
-    compressed_pdf = os.path.join(directory, f"{dir_name}_unido_comprimido.pdf")
-    print(f"Archivo PDF comprimido: {compressed_pdf}")
-    final_pdf = compress_pdf(output_pdf, compressed_pdf, compression_level=compression_level)
-
-    # Reemplazar archivo original si se comprimió
-    if final_pdf != output_pdf:
-        os.replace(final_pdf, output_pdf)
-        final_path = output_pdf
-    else:
-        final_path = output_pdf
 
     # Eliminar carpeta temporal
     try:
@@ -211,13 +214,13 @@ def compile_pdfs_in_directory(directory):
     except Exception as e:
         print(f"Error eliminando directorio temporal {temp_dir}: {e}")
 
-    return final_path
+    return output_pdf
 
 def compile_pdfs_from_files(files):
     """
     Compila y une PDFs a partir de una lista de archivos específicos.
     Usa una carpeta temporal estándar para archivos intermedios.
-    NOTA: No elimina la carpeta temporal aquí para evitar borrar el archivo final antes de moverlo.
+    Ahora procesa TODOS los tipos de archivos (no requiere PDFs válidos).
     """
     temp_dir = tempfile.mkdtemp(prefix="temp_pdfs_compilador_")
     print(f"Carpeta temporal creada para archivos: {temp_dir}")
@@ -232,30 +235,43 @@ def compile_pdfs_from_files(files):
         try:
             if ext == ".pdf":
                 temp_pdf = os.path.join(temp_dir, f"{name}_clean.pdf")
-                print(f"Limpiando PDF: {filepath} -> {temp_pdf}")
+                print(f"Procesando PDF: {filepath} -> {temp_pdf}")
                 if clean_pdf(filepath, temp_pdf):
                     merger.append(temp_pdf)
+                    print(f"PDF agregado al merger: {temp_pdf}")
                 else:
-                    print(f"Saltando PDF corrupto: {filepath}")
+                    print(f"PDF saltado (corrupto): {filepath}")
             elif ext in [".png", ".jpg", ".jpeg"]:
                 temp_pdf = os.path.join(temp_dir, f"{name}_temp.pdf")
-                print(f"Convirtiendo imagen a PDF: {filepath} -> {temp_pdf}")
-                image_to_pdf(filepath, temp_pdf)
-                merger.append(temp_pdf)
+                print(f"Procesando imagen: {filepath} -> {temp_pdf}")
+                try:
+                    image_to_pdf(filepath, temp_pdf)
+                    merger.append(temp_pdf)
+                    print(f"Imagen convertida y agregada: {temp_pdf}")
+                except Exception as e:
+                    print(f"Error convirtiendo imagen {filepath}: {e}. Saltando.")
             elif ext == ".txt":
                 temp_pdf = os.path.join(temp_dir, f"{name}_temp.pdf")
-                print(f"Convirtiendo txt a PDF: {filepath} -> {temp_pdf}")
-                txt_to_pdf(filepath, temp_pdf)
-                merger.append(temp_pdf)
+                print(f"Procesando texto: {filepath} -> {temp_pdf}")
+                try:
+                    txt_to_pdf(filepath, temp_pdf)
+                    merger.append(temp_pdf)
+                    print(f"Texto convertido y agregado: {temp_pdf}")
+                except Exception as e:
+                    print(f"Error convirtiendo texto {filepath}: {e}. Saltando.")
             elif ext == ".docx":
                 temp_pdf = os.path.join(temp_dir, f"{name}_temp.pdf")
-                print(f"Convirtiendo docx a PDF: {filepath} -> {temp_pdf}")
-                docx_to_pdf(filepath, temp_pdf)
-                merger.append(temp_pdf)
+                print(f"Procesando DOCX: {filepath} -> {temp_pdf}")
+                try:
+                    docx_to_pdf(filepath, temp_pdf)
+                    merger.append(temp_pdf)
+                    print(f"DOCX convertido y agregado: {temp_pdf}")
+                except Exception as e:
+                    print(f"Error convirtiendo DOCX {filepath}: {e}. Saltando.")
             else:
                 print(f"Extensión no soportada: {ext}, archivo: {filepath}")
         except Exception as e:
-            print(f"Error procesando {filepath}: {e}. Saltando este archivo.")
+            print(f"Error general procesando {filepath}: {e}. Saltando este archivo.")
 
     output_pdf = os.path.join(temp_dir, "temp_output.pdf")
     print(f"Archivo PDF final temporal: {output_pdf}")
@@ -263,10 +279,10 @@ def compile_pdfs_from_files(files):
     if len(merger.pages) > 0:
         merger.write(output_pdf)
         merger.close()
+        print(f"PDF unido creado exitosamente con {len(merger.pages)} páginas.")
     else:
         merger.close()
-        # No eliminamos temp_dir aquí para evitar borrar el archivo final
-        raise ValueError("No se encontraron archivos PDF válidos para compilar.")
+        raise ValueError("No se encontraron archivos válidos para compilar (PDF, imágenes, textos, DOCX). Verifique que los archivos sean soportados.")
 
     if not os.path.exists(output_pdf):
         print(f"Error: archivo final no encontrado: {output_pdf}")
@@ -275,34 +291,7 @@ def compile_pdfs_from_files(files):
     size_bytes = os.path.getsize(output_pdf)
     print(f"Tamaño archivo final: {size_bytes} bytes")
 
-    # Determinar nivel de compresión según tamaño
-    if size_bytes < 3 * 1024 * 1024:
-        compression_level = "none"
-    elif size_bytes < 8 * 1024 * 1024:
-        compression_level = "ebook"
-    else:
-        compression_level = "screen"
-
-    compressed_pdf = os.path.join(temp_dir, "temp_compressed.pdf")
-    print(f"Archivo PDF comprimido temporal: {compressed_pdf}")
-    final_pdf = compress_pdf(output_pdf, compressed_pdf, compression_level=compression_level)
-
-    print(f"compress_pdf devolvió: {final_pdf}")
-    print(f"¿Existe archivo final? {os.path.exists(final_pdf)}")
-
-    # Reemplazar archivo original si se comprimió
-    if final_pdf != output_pdf:
-        os.replace(final_pdf, output_pdf)
-        final_path = output_pdf
-    else:
-        final_path = output_pdf
-
-    # NO eliminamos temp_dir aquí para evitar borrar el archivo final
-    # La eliminación se hará después de mover el archivo final en run_compilation
-
-    return final_path, temp_dir
-
-# --- Funciones para selección de archivos y carpetas ---
+    return output_pdf, temp_dir
 
 def select_files():
     """
@@ -336,22 +325,27 @@ def select_directory():
         entry_dir.insert(0, folder_selected)
         selected_mode = "folder"
 
-# --- Función para abrir ayuda.pdf con botón e ícono ---
+# --- Función para abrir ayuda.pdf con botón e ícono (MODIFICADA para PyInstaller) ---
 
 def abrir_ayuda():
     """
     Abre el archivo ayuda.pdf con la aplicación predeterminada del sistema.
+    MODIFICACIÓN: Usa sys._MEIPASS para modo EXE.
     """
+    # Detectar ruta base para cargar ayuda.pdf
     if getattr(sys, 'frozen', False):
-        base_path = os.path.dirname(sys.executable)
+        base_path = sys._MEIPASS  # Directorio temporal de PyInstaller
     else:
-        base_path = os.path.dirname(os.path.abspath(__file__))
+        base_path = os.path.dirname(os.path.abspath(__file__))  # Directorio del script
 
     ruta_ayuda = os.path.join(base_path, "ayuda.pdf")
+    print(f"Intentando abrir ayuda.pdf desde: {ruta_ayuda}")  # Para depuración
 
     try:
         os.startfile(ruta_ayuda)  # Solo funciona en Windows
+        print("Archivo de ayuda abierto exitosamente.")  # Para depuración
     except Exception as e:
+        print(f"Error al abrir ayuda.pdf: {e}")  # Para depuración
         messagebox.showerror("Error", f"No se pudo abrir el archivo de ayuda:\n{e}")
 
 # --- Función principal para ejecutar la compilación ---
@@ -362,6 +356,7 @@ def run_compilation():
     Mueve el PDF final a la carpeta Descargas con nombre adecuado. 
     Elimina la carpeta temporal solo después de mover el archivo final.
     """
+    global btn_compile  # NUEVO: Declara explícitamente que usas la variable global del botón
     global selected_mode, selected_files
     input_value = entry_dir.get()
     if not input_value:
@@ -452,12 +447,21 @@ btn_browse_files.pack(side=tk.LEFT, padx=5)
 btn_compile = tk.Button(root, text="Compilar PDF", command=run_compilation, width=20)
 btn_compile.pack(pady=5)
 
-# --- Botón de ayuda con ícono ---
+# --- Botón de ayuda con ícono (MODIFICADO para PyInstaller) ---
+
+# Inicializar icono_ayuda como None
+icono_ayuda = None
 
 try:
     # Detectar ruta base para cargar ayuda.png
-    base_path = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.dirname(os.path.abspath(__file__))
+    if getattr(sys, 'frozen', False):
+        base_path = sys._MEIPASS  # En modo EXE (PyInstaller), usar el directorio temporal
+    else:
+        base_path = os.path.dirname(os.path.abspath(__file__))  # En modo script Python
+
     icono_ayuda_path = os.path.join(base_path, "ayuda.png")
+    print(f"Intentando cargar ícono desde: {icono_ayuda_path}")  # Para depuración
+
     imagen_ayuda = Image.open(icono_ayuda_path)
 
     # Compatibilidad con versiones nuevas y antiguas de Pillow para el filtro de redimensionado
@@ -468,8 +472,11 @@ try:
 
     imagen_ayuda = imagen_ayuda.resize((24, 24), resample_filter)  # Redimensionar ícono
     icono_ayuda = ImageTk.PhotoImage(imagen_ayuda)
+
+    print("Ícono de ayuda cargado exitosamente.")  # Para depuración
 except Exception as e:
     print(f"No se pudo cargar el ícono de ayuda: {e}")
+    print(f"Ruta intentada: {icono_ayuda_path if 'icono_ayuda_path' in locals() else 'No definida'}")  # Para depuración
     icono_ayuda = None
 
 # Crear botón con el ícono de ayuda que abre ayuda.pdf al hacer clic
@@ -478,6 +485,19 @@ if icono_ayuda:
     btn_ayuda.image = icono_ayuda  # Evitar que la imagen sea recolectada por el garbage collector
 btn_ayuda.place(relx=1.0, rely=0.1, anchor="se", x=-10, y=+20)
 
+# Opcional: Asignar ícono a la ventana Tkinter si existe icono.ico
+try:
+    if getattr(sys, 'frozen', False):
+        base_path = sys._MEIPASS
+    else:
+        base_path = os.path.dirname(os.path.abspath(__file__))
+
+    icon_path = os.path.join(base_path, "icono.ico")
+    if os.path.exists(icon_path):
+        root.iconbitmap(icon_path)
+        print("Ícono de ventana asignado exitosamente.")
+except Exception as e:
+    print(f"No se pudo asignar ícono de ventana: {e}")
 
 # Iniciar el loop principal de la interfaz gráfica
 root.mainloop()
