@@ -8,6 +8,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox
 from PIL import Image, ImageTk
 from docx import Document
+from docx2pdf import convert  # NUEVO: Para conversión de DOCX a PDF
 from fpdf import FPDF
 from PyPDF2 import PdfMerger, PdfReader, PdfWriter
 from PyPDF2.errors import PdfReadError
@@ -20,35 +21,23 @@ selected_files = []
 
 # --- Funciones de conversión de archivos a PDF ---
 
-def txt_to_pdf(text_path, pdf_path):
-    """Convierte un archivo de texto a PDF."""
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_auto_page_break(auto=True, margin=15)
-    pdf.set_font("Arial", size=12)
-    with open(text_path, "r", encoding="utf-8") as f:
-        for line in f:
-            pdf.multi_cell(0, 10, line)
-    pdf.output(pdf_path)
 
 def docx_to_pdf(docx_path, pdf_path):
-    """Convierte un archivo DOCX a PDF."""
-    doc = Document(docx_path)
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_auto_page_break(auto=True, margin=15)
-    pdf.set_font("Arial", size=12)
-    for para in doc.paragraphs:
-        pdf.multi_cell(0, 10, para.text)
-    pdf.output(pdf_path)
-
-def image_to_pdf(image_path, pdf_path):
-    """Convierte una imagen a PDF."""
-    image = Image.open(image_path)
-    if image.mode == "RGBA":
-        image = image.convert("RGB")  # Convertir a RGB si tiene transparencia
-    image.save(pdf_path, "PDF", resolution=100.0)
-
+    """
+    Convierte un archivo DOCX a PDF usando docx2pdf (preserva formato e imágenes).
+    Requiere LibreOffice o MS Office instalado.
+    """
+    try:
+        convert(docx_path, pdf_path)  # Convierte directamente a PDF
+        print(f"DOCX convertido exitosamente: {docx_path} -> {pdf_path}")
+    except Exception as e:
+        print(f"Error convirtiendo DOCX {docx_path}: {e}. Creando PDF vacío como fallback.")
+        # Fallback: Crear un PDF básico con mensaje de error
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Arial", size=12)
+        pdf.multi_cell(0, 10, f"Error al convertir DOCX: {os.path.basename(docx_path)}. Verifique el archivo.")
+        pdf.output(pdf_path)
 # --- Funciones para manejo de PDFs ---
 
 def clean_pdf(input_path, output_path):
@@ -304,7 +293,7 @@ def select_files():
         filetypes=[
             ("Todos los archivos", "*.*"),
             ("Archivos PDF", "*.pdf"),
-            ("Archivos de texto", "*.txt"),
+        #    ("Archivos de texto", "*.txt"),
             ("Archivos Word", "*.docx"),
             ("Imágenes", "*.png;*.jpg;*.jpeg")
         ]
