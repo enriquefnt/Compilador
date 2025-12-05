@@ -21,23 +21,31 @@ selected_files = []
 
 # --- Funciones de conversión de archivos a PDF ---
 
+def txt_to_pdf(text_path, pdf_path):
+    """Convierte un archivo de texto a PDF."""
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.set_font("Arial", size=12)
+    with open(text_path, "r", encoding="utf-8") as f:
+        for line in f:
+            pdf.multi_cell(0, 10, line)
+    pdf.output(pdf_path)
 
 def docx_to_pdf(docx_path, pdf_path):
-    """
-    Convierte un archivo DOCX a PDF usando docx2pdf (preserva formato e imágenes).
-    Requiere LibreOffice o MS Office instalado.
-    """
+    """Convierte un archivo DOCX a PDF usando docx2pdf."""
     try:
-        convert(docx_path, pdf_path)  # Convierte directamente a PDF
-        print(f"DOCX convertido exitosamente: {docx_path} -> {pdf_path}")
+        convert(docx_path, pdf_path)  # Usa docx2pdf para conversión completa
     except Exception as e:
-        print(f"Error convirtiendo DOCX {docx_path}: {e}. Creando PDF vacío como fallback.")
-        # Fallback: Crear un PDF básico con mensaje de error
-        pdf = FPDF()
-        pdf.add_page()
-        pdf.set_font("Arial", size=12)
-        pdf.multi_cell(0, 10, f"Error al convertir DOCX: {os.path.basename(docx_path)}. Verifique el archivo.")
-        pdf.output(pdf_path)
+        raise Exception(f"Error convirtiendo DOCX a PDF: {e}")
+
+def image_to_pdf(image_path, pdf_path):
+    """Convierte una imagen a PDF."""
+    image = Image.open(image_path)
+    if image.mode == "RGBA":
+        image = image.convert("RGB")  # Convertir a RGB si tiene transparencia
+    image.save(pdf_path, "PDF", resolution=100.0)
+
 # --- Funciones para manejo de PDFs ---
 
 def clean_pdf(input_path, output_path):
@@ -182,7 +190,7 @@ def compile_pdfs_in_directory(directory):
             print(f"Error general procesando {filepath}: {e}. Saltando este archivo.")
 
     dir_name = os.path.basename(os.path.normpath(directory))
-    output_pdf = os.path.join(directory, f"{dir_name}_UNIDO.pdf")
+    output_pdf = os.path.join(directory, f"1_{dir_name}_UNIDO.pdf")
     print(f"Archivo PDF final: {output_pdf}")
 
     if len(merger.pages) > 0:
@@ -293,7 +301,7 @@ def select_files():
         filetypes=[
             ("Todos los archivos", "*.*"),
             ("Archivos PDF", "*.pdf"),
-        #    ("Archivos de texto", "*.txt"),
+           ("Archivos de texto", "*.txt"),
             ("Archivos Word", "*.docx"),
             ("Imágenes", "*.png;*.jpg;*.jpeg")
         ]
@@ -357,7 +365,7 @@ def run_compilation():
             output_pdf = compile_pdfs_in_directory(input_value)
             downloads_path = os.path.join(os.path.expanduser("~"), "Downloads")
             dir_name = os.path.basename(os.path.normpath(input_value))
-            output_pdf_dest = os.path.join(downloads_path, f"{dir_name}_UNIDO.pdf")
+            output_pdf_dest = os.path.join(downloads_path, f"1_{dir_name}_UNIDO.pdf")
             if os.path.exists(output_pdf_dest):
                 os.remove(output_pdf_dest)
             print(f"Moviendo archivo final de {output_pdf} a {output_pdf_dest}")
@@ -372,7 +380,7 @@ def run_compilation():
                 return
             output_pdf, temp_dir = compile_pdfs_from_files(selected_files)
             downloads_path = os.path.join(os.path.expanduser("~"), "Downloads")
-            base_name = "Documentos_UNIDOS"
+            base_name = "1_Documentos_UNIDOS"
             i = 1
             while True:
                 candidate = os.path.join(downloads_path, f"{base_name}_{i}.pdf")
