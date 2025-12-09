@@ -1,4 +1,4 @@
-import site
+#import site
 site.addsitedir(site.getusersitepackages())
 import sys
 import os
@@ -37,8 +37,12 @@ def txt_to_pdf(text_path, pdf_path):
 
 def docx_to_pdf(docx_path, pdf_path):
     """Convierte un archivo DOCX a PDF usando docx2pdf."""
+    # try:
+    #     convert(docx_path, pdf_path)  # Usa docx2pdf para conversión completa
+    # except Exception as e:
+    #     raise Exception(f"Error convirtiendo DOCX a PDF: {e}")
     try:
-        convert(docx_path, pdf_path)  # Usa docx2pdf para conversión completa
+        convert(docx_path, pdf_path, office='msoffice')  # Fuerza Microsoft Office
     except Exception as e:
         raise Exception(f"Error convirtiendo DOCX a PDF: {e}")
 
@@ -83,8 +87,8 @@ def compress_pdf(input_path, output_path, compression_level="none"):
         base_path = os.path.dirname(os.path.abspath(__file__))
 
     # Ruta al ejecutable de Ghostscript dentro de la carpeta gs
-    #gs_executable = os.path.join(base_path, "gs", "gs10.05.1", "bin", "gswin64c.exe")
-    gs_executable = os.path.join(base_path,"DistribucionApp", "gs", "gs10.05.1", "bin", "gswin64c.exe")
+    gs_executable = os.path.join(base_path, "gs", "gs10.05.1", "bin", "gswin64c.exe")
+    #git addgs_executable = os.path.join(base_path,"DistribucionApp", "gs", "gs10.05.1", "bin", "gswin64c.exe")
 
     print("Ruta a Ghostscript:", gs_executable)
     print("¿Existe Ghostscript en esa ruta?", os.path.exists(gs_executable))
