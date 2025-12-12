@@ -1,5 +1,5 @@
-import site
-site.addsitedir(site.getusersitepackages())
+#import site
+# site.addsitedir(site.getusersitepackages())
 import sys
 import os
 import subprocess
