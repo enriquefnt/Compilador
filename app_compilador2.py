@@ -16,6 +16,7 @@ try:
     from fpdf import FPDF  # Usar fpdf original (con workarounds para UTF-8)
     from PyPDF2 import PdfMerger, PdfReader, PdfWriter
     from PyPDF2.errors import PdfReadError
+    from tkinter import ttk
 except ImportError as e:
     messagebox.showerror("Error", f"Faltan dependencias: {e}. Instala con pip.")
     sys.exit(1)
